@@ -47,6 +47,13 @@ export enum ViewMode {
   ROOT_CAUSE = 'ROOT_CAUSE', // Highlight upstream errors
 }
 
+export enum Page {
+  LINEAGE = 'LINEAGE',
+  ALERTS = 'ALERTS',
+  CATALOG = 'CATALOG',
+  SETTINGS = 'SETTINGS'
+}
+
 // Ingestion System Types
 
 export enum IntegrationType {

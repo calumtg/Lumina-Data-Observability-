@@ -1,19 +1,27 @@
 import React from 'react';
 import { DataAsset, HealthStatus } from '../types';
-import { X, Clock, User, Shield, Activity, List } from 'lucide-react';
+import { X, Clock, User, Shield, Activity, List, Trash2 } from 'lucide-react';
 
 interface DetailsPanelProps {
   node: DataAsset | null;
   onClose: () => void;
+  onDelete: (id: string) => void;
 }
 
-const DetailsPanel: React.FC<DetailsPanelProps> = ({ node, onClose }) => {
+const DetailsPanel: React.FC<DetailsPanelProps> = ({ node, onClose, onDelete }) => {
   if (!node) return null;
 
   const statusColor = 
     node.status === HealthStatus.HEALTHY ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
     node.status === HealthStatus.WARNING ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
     'bg-red-500/20 text-red-400 border-red-500/30';
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent click from bubbling to React Flow pane
+    if (window.confirm(`Are you sure you want to delete "${node.label}"? This action cannot be undone.`)) {
+      onDelete(node.id);
+    }
+  };
 
   return (
     <div className="absolute right-4 top-20 bottom-8 w-96 bg-slate-900/95 backdrop-blur border border-slate-700 rounded-xl shadow-2xl flex flex-col z-20 overflow-hidden transition-all animate-in slide-in-from-right duration-300">
@@ -27,9 +35,22 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ node, onClose }) => {
           <h2 className="text-xl font-bold text-white break-words">{node.label}</h2>
           <p className="text-slate-400 text-sm mt-1">{node.type}</p>
         </div>
-        <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
-          <X size={20} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button 
+            type="button"
+            onClick={handleDelete}
+            className="text-slate-500 hover:text-red-400 p-2 hover:bg-red-500/10 rounded-lg transition-colors"
+            title="Delete Asset"
+          >
+            <Trash2 size={20} />
+          </button>
+          <button 
+            onClick={onClose} 
+            className="text-slate-500 hover:text-white p-2 hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Content */}

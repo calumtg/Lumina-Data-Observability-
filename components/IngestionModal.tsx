@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DataSource, IntegrationType } from '../types';
 import { connectSource, triggerIngestion } from '../services/mockIngestionService';
 import { X, Plus, Database, Server, Layers, BarChart, Loader2, CheckCircle, RefreshCw } from 'lucide-react';
@@ -19,6 +19,14 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   const [selectedType, setSelectedType] = useState<IntegrationType | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab('LIST');
+      setSelectedType(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -109,6 +117,12 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                    </div>
                    <h4 className="text-slate-300 font-medium">No sources connected</h4>
                    <p className="text-slate-500 text-sm mt-1">Connect a database or tool to start mapping lineage.</p>
+                   <button 
+                      onClick={() => setActiveTab('NEW')}
+                      className="mt-4 text-primary-400 hover:text-primary-300 text-sm font-medium"
+                   >
+                      Connect your first source →
+                   </button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -131,6 +145,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                          onClick={() => handleSync(source)}
                          disabled={syncingId === source.id}
                          className={`p-2 rounded-lg border border-slate-700 hover:bg-slate-700 hover:text-white transition-all ${syncingId === source.id ? 'bg-slate-700 text-blue-400' : 'text-slate-400'}`}
+                         title="Sync Metadata"
                       >
                         {syncingId === source.id ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
                       </button>
