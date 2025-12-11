@@ -46,3 +46,28 @@ export enum ViewMode {
   IMPACT_ANALYSIS = 'IMPACT_ANALYSIS', // Highlight downstream
   ROOT_CAUSE = 'ROOT_CAUSE', // Highlight upstream errors
 }
+
+// Ingestion System Types
+
+export enum IntegrationType {
+  SNOWFLAKE = 'Snowflake',
+  POSTGRES = 'PostgreSQL',
+  BIGQUERY = 'BigQuery',
+  DBT = 'dbt',
+  TABLEAU = 'Tableau'
+}
+
+export interface DataSource {
+  id: string;
+  name: string;
+  type: IntegrationType;
+  status: 'CONNECTED' | 'DISCONNECTED' | 'SYNCING' | 'ERROR';
+  lastSync?: string;
+  config?: Record<string, any>;
+}
+
+export interface IngestionResult {
+  nodes: DataAsset[];
+  edges: LineageEdge[];
+  summary: string;
+}

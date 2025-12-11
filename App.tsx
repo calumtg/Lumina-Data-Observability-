@@ -16,8 +16,9 @@ import { INITIAL_NODES, INITIAL_EDGES } from './constants';
 import CustomNode from './components/CustomNode';
 import DetailsPanel from './components/DetailsPanel';
 import AssistantPanel from './components/AssistantPanel';
-import { DataAsset, HealthStatus, ViewMode } from './types';
-import { Search, GitBranch, AlertOctagon, History, Layout } from 'lucide-react';
+import IngestionModal from './components/IngestionModal';
+import { DataAsset, HealthStatus, ViewMode, DataSource } from './types';
+import { Search, GitBranch, AlertOctagon, History, Layout, Database } from 'lucide-react';
 
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
@@ -47,6 +48,10 @@ const App = () => {
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.STANDARD);
   const [timeTravelDays, setTimeTravelDays] = useState<number>(0);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  
+  // Ingestion State
+  const [isIngestionOpen, setIsIngestionOpen] = useState(false);
+  const [sources, setSources] = useState<DataSource[]>([]);
 
   // --- Graph Traversal Logic ---
 
@@ -155,21 +160,57 @@ const App = () => {
     setSelectedNode(null);
   }, [setNodes, setEdges]);
 
+  // --- Ingestion Handlers ---
+  const handleIngestionComplete = (newAssets: DataAsset[], newRelationships: any[]) => {
+    // Merge new nodes
+    setNodes((currentNodes) => {
+       const existingIds = new Set(currentNodes.map(n => n.id));
+       const nodesToAdd = newAssets
+         .filter(asset => !existingIds.has(asset.id))
+         .map(asset => ({
+            id: asset.id,
+            type: 'custom',
+            position: asset.position,
+            data: asset
+         }));
+       return [...currentNodes, ...nodesToAdd];
+    });
+
+    // Merge new edges
+    setEdges((currentEdges) => {
+       const existingIds = new Set(currentEdges.map(e => e.id));
+       const edgesToAdd = newRelationships
+         .filter(rel => !existingIds.has(rel.id))
+         .map(rel => ({
+            id: rel.id,
+            source: rel.source,
+            target: rel.target,
+            animated: true,
+            style: { stroke: '#64748b' },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#64748b' },
+         }));
+       return [...currentEdges, ...edgesToAdd];
+    });
+  };
+
+  const handleAddSource = (source: DataSource) => {
+    setSources(prev => [...prev, source]);
+  };
+
+  const handleUpdateSource = (id: string, updates: Partial<DataSource>) => {
+    setSources(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+  };
+
   // --- Mode Switching Effect ---
   useEffect(() => {
     resetView();
   }, [viewMode, resetView]);
 
   // --- Time Travel Simulation ---
-  // Simple simulation: hides nodes that were "created" recently or changes status
   useEffect(() => {
-    // In a real app, this would query the backend for the graph state at T-x
-    // Here we just simulate filtering for demo purposes
     if (timeTravelDays > 0) {
-      // Example: Hide the broken dashboard if we go back 4 days
       setNodes(nds => nds.map(n => {
          if (n.id === 'fct_attribution' && timeTravelDays > 1) {
-            // Simulate that before 2 days ago, this was Healthy
             return { ...n, data: { ...n.data, status: HealthStatus.HEALTHY }};
          }
          if (n.id === 'dash_mkt' && timeTravelDays > 2) {
@@ -178,8 +219,10 @@ const App = () => {
          return n;
       }));
     } else {
-      // Reset to initial state (the constants)
-      setNodes(initialFlowNodes);
+      // If we are resetting from time travel, we generally want to restore initial state
+      // However, if we added nodes via ingestion, we want to keep them.
+      // For simplicity in this demo, time travel reset keeps current graph structure but resets statuses
+      // Real implementation would re-query backend for state at T=0
     }
   }, [timeTravelDays, setNodes]);
 
@@ -223,6 +266,20 @@ const App = () => {
 
         {/* Right Controls */}
         <div className="flex items-center gap-4">
+           {/* Ingestion Trigger */}
+           <button 
+             onClick={() => setIsIngestionOpen(true)}
+             className="flex items-center gap-2 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors text-xs font-medium"
+           >
+             <Database size={14} />
+             Integrations
+             {sources.length > 0 && (
+                <span className="bg-primary-600 text-white text-[10px] px-1.5 rounded-full">{sources.length}</span>
+             )}
+           </button>
+
+           <div className="h-6 w-px bg-slate-800"></div>
+
            {/* Time Travel Slider */}
            <div className="flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-full border border-slate-700">
              <History size={14} className="text-slate-400" />
@@ -238,14 +295,6 @@ const App = () => {
              <span className="text-xs text-slate-300 w-16 text-right">
                {timeTravelDays === 0 ? 'Now' : `${timeTravelDays}d ago`}
              </span>
-           </div>
-           
-           <div className="h-8 w-px bg-slate-700 mx-2"></div>
-           
-           <div className="flex items-center gap-2">
-             <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-slate-300 text-xs font-bold">
-               JS
-             </div>
            </div>
         </div>
       </div>
@@ -304,11 +353,20 @@ const App = () => {
       />
 
       <AssistantPanel 
-        nodes={INITIAL_NODES} 
-        edges={INITIAL_EDGES} 
+        nodes={nodes.map(n => n.data as DataAsset)} 
+        edges={edges.map(e => ({ id: e.id, source: e.source, target: e.target }))} 
         selectedNodeId={selectedNode?.id}
         isOpen={isAssistantOpen}
         onToggle={() => setIsAssistantOpen(!isAssistantOpen)}
+      />
+
+      <IngestionModal 
+        isOpen={isIngestionOpen}
+        onClose={() => setIsIngestionOpen(false)}
+        onIngestionComplete={handleIngestionComplete}
+        existingSources={sources}
+        onAddSource={handleAddSource}
+        onUpdateSource={handleUpdateSource}
       />
     </div>
   );
